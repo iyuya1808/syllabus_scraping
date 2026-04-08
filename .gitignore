@@ -19,5 +19,8 @@ venv/
 .DS_Store
 Thumbs.db
 
-# VS Code - 常時共有するためコメントアウトを解除
-# .vscode/
+# VS Code - 常時共有するためコメントアウト
+# .vscode/ は無視しない設定に変更
+!.vscode/
+.vscode/*
+!.vscode/launch.json

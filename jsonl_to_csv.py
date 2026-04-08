@@ -13,30 +13,33 @@ def convert(input_jsonl, output_csv):
     
     # 1. すべてのユニークなキー（カラム名）を収集
     all_keys = set()
-    rows = []
+    rows_dict = {} # entno をキーにして重複を排除
+    
     with open(input_path, "r", encoding="utf-8") as f:
         for line in f:
             if not line.strip(): continue
             try:
                 data = json.loads(line)
+                entno = data.get("entno", "")
+                
                 # ネストされた table と sections をフラット化
                 flat_data = {
-                    "entno": data.get("entno", ""),
+                    "entno": entno,
                     "year": data.get("year", ""),
                     "title": data.get("title", ""),
                     "fetched_at": data.get("fetched_at", ""),
                 }
-                # table 項目を追加
                 flat_data.update(data.get("table", {}))
-                # sections 項目を追加
                 flat_data.update(data.get("sections", {}))
                 
                 all_keys.update(flat_data.keys())
-                rows.append(flat_data)
+                # 同じ entno なら上書き（最新の状態を保持）
+                rows_dict[entno] = flat_data
             except Exception as e:
                 print(f"Error parsing line: {e}")
 
-    # 2. カラムの順序を整える (ID, 年, タイトルを先頭にする)
+    # リストに変換してソート
+    rows = sorted(rows_dict.values(), key=lambda x: x["entno"])
     header = ["entno", "year", "title", "fetched_at"]
     remaining_keys = sorted(list(all_keys - set(header)))
     full_header = header + remaining_keys

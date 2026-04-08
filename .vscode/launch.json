@@ -42,12 +42,6 @@
             "justMyCode": true
         },
         {
-            "name": "-- 認証管理 --",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/save_auth.py"
-        },
-        {
             "name": "[1] ブラウザ起動 (Chrome Debug mode)",
             "type": "node-terminal",
             "request": "launch",

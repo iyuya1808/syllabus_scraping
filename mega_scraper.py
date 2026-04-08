@@ -22,18 +22,22 @@ def _stable_content(page, attempts: int = 10, delay_ms: int = 400) -> str:
         raise last_error
     return ""
 
-def strip_(html: str) -> str:
-    if not html: return ""
-    t = re.sub(r"<[^>]+>", "", html)
-    t = t.replace("&nbsp;", " ")
-    return re.sub(r"\s+", " ", t).strip()
+def clean_text(text: str) -> str:
+    if not text: return ""
+    text = text.replace("\xa0", " ")
+    # スペースの連続は1つのスペースにするが、改行(\n)は保持する
+    lines = text.split("\n")
+    cleaned_lines = [re.sub(r"[ \t]+", " ", line).strip() for line in lines]
+    # 空行が連続する場合は1つにする
+    return "\n".join(line for line in cleaned_lines if line)
 
 def parse_detail_content(page):
     """HTML をパースして JSON 構造に変換する"""
     data = {"title": "", "table": {}, "sections": {}}
     
     title_node = page.query_selector("h2")
-    data["title"] = strip_(title_node.inner_html()) if title_node else ""
+    if title_node:
+        data["title"] = clean_text(title_node.inner_text())
     
     # テーブル項目の抽出
     rows = page.query_selector_all("table tr")
@@ -41,18 +45,18 @@ def parse_detail_content(page):
         th = row.query_selector("th")
         td = row.query_selector("td")
         if th and td:
-            key = strip_(th.inner_html())
-            val = strip_(td.inner_html())
+            key = clean_text(th.inner_text())
+            val = clean_text(td.inner_text())
             if key:
                 data["table"][key] = val
     
     # セクション (h3) の抽出
     sections = page.query_selector_all("h3")
     for sec in sections:
-        sec_title = strip_(sec.inner_html()).replace("[説明]", "").strip()
+        sec_title = clean_text(sec.inner_text()).replace("[説明]", "").strip()
         content_node = page.evaluate_handle("node => node.nextElementSibling", sec)
         if content_node:
-            val = strip_(page.evaluate("node => node.innerHTML", content_node))
+            val = clean_text(page.evaluate("node => node.innerText", content_node))
             if sec_title:
                 data["sections"][sec_title] = val
                 

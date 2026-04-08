@@ -1,0 +1,25 @@
+# Authentication & Session (IMPORTANT: DO NOT REMOVE)
+auth.json
+.chrome-keio-debug/
+
+# Scraped Data
+*.jsonl
+*.csv
+*.json
+!progress_local.json
+progress_local.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+# もし VS Code の設定も共有したい場合は、上記をコメントアウトしてください

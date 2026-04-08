@@ -6,8 +6,7 @@ auth.json
 *.jsonl
 *.csv
 *.json
-!progress_local.json
-progress_local.json
+progress_*.json
 
 # Python
 __pycache__/
@@ -20,6 +19,5 @@ venv/
 .DS_Store
 Thumbs.db
 
-# VS Code
-.vscode/
-# もし VS Code の設定も共有したい場合は、上記をコメントアウトしてください
+# VS Code - 常時共有するためコメントアウトを解除
+# .vscode/

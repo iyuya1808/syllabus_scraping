@@ -59,10 +59,16 @@ def parse_detail_content(page):
     return data
 
 class MegaScraper:
-    def __init__(self, year, output_file, progress_file, cdp_url=None, auth_file=None, headless=False):
+    def __init__(self, year, direction="up", output_file=None, progress_file=None, cdp_url=None, auth_file=None, headless=False):
         self.year = year
-        self.output_file = Path(output_file)
-        self.progress_file = Path(progress_file)
+        self.direction = direction
+        
+        # デフォルトファイル名の決定
+        out = output_file or f"syllabus_{year}.jsonl"
+        prog = progress_file or f"progress_{year}_{direction}.json"
+        
+        self.output_file = Path(out)
+        self.progress_file = Path(prog)
         self.cdp_url = cdp_url
         self.auth_file = Path(auth_file) if auth_file else None
         self.headless = headless
@@ -72,7 +78,9 @@ class MegaScraper:
         if self.progress_file.exists():
             with open(self.progress_file, "r") as f:
                 return json.load(f)
-        return {"next_entno": 1}
+        # 初期値: up なら 1, down なら 99999
+        start = 1 if self.direction == "up" else 99999
+        return {"next_entno": start}
 
     def _save_progress(self):
         with open(self.progress_file, "w") as f:
@@ -80,11 +88,10 @@ class MegaScraper:
 
     def run(self, batch_size=1000):
         start_entno = self.progress["next_entno"]
-        print(f"Starting mega scrape from entno: {start_entno} (Year: {self.year}, Headless: {self.headless})")
+        print(f"Starting mega scrape (Year: {self.year}, Direction: {self.direction}, StartID: {start_entno}, Headless: {self.headless})")
         
         with sync_playwright() as p:
             try:
-                # 接続 or 起動の選択
                 if self.cdp_url and not self.headless:
                     print(f"Connecting to existing Chrome via CDP: {self.cdp_url}")
                     browser = p.chromium.connect_over_cdp(self.cdp_url)
@@ -99,6 +106,11 @@ class MegaScraper:
                 current_entno = start_entno
                 
                 while count < batch_size:
+                    # 0未満または100000以上になったら終了
+                    if current_entno < 0 or current_entno > 99999:
+                        print(f"\nReached boundary: {current_entno}")
+                        break
+
                     ent = str(current_entno).zfill(5)
                     url = f"https://gslbs.keio.jp/syllabus/detail?ttblyr={self.year}&entno={ent}&lang=jp"
                     
@@ -107,7 +119,6 @@ class MegaScraper:
                         print(f"[{ent}] Fetching ({count+1}/{batch_size})...", end="\r")
                         page.goto(url, wait_until="load", timeout=60000)
                         
-                        # ページが存在するかチェック
                         content = _stable_content(page)
                         if "指定した科目のシラバスは存在しません" in content:
                             pass
@@ -132,7 +143,12 @@ class MegaScraper:
                     finally:
                         page.close()
                     
-                    current_entno += 1
+                    # 進行方向の制御
+                    if self.direction == "up":
+                        current_entno += 1
+                    else:
+                        current_entno -= 1
+
                     count += 1
                     self.progress["next_entno"] = current_entno
                     
@@ -151,16 +167,19 @@ class MegaScraper:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch", type=int, default=1000, help="1回の実行で取得する件数")
-    parser.add_argument("--year", type=int, default=2026)
-    parser.add_argument("--out", default="syllabus_2026.jsonl")
-    parser.add_argument("--prog", default="progress_local.json")
-    parser.add_argument("--auth", default="auth.json", help="認証状態を保存したファイル (save_auth.py で作成)")
+    parser.add_argument("--year", type=int, default=2026, help="シラバスの年度")
+    parser.add_argument("--direction", choices=["up", "down"], default="up", help="取得の方向 (昇順: up, 降順: down)")
+    parser.add_argument("--out", default=None, help="出力JSONLファイル名 (未指定なら年度から自動生成)")
+    parser.add_argument("--prog", default=None, help="進捗JSONファイル名 (未指定なら年度と方向から自動生成)")
+    parser.add_argument("--auth", default="auth.json", help="認証状態を保存したファイル")
     parser.add_argument("--cdp-url", default="http://127.0.0.1:9222")
     parser.add_argument("--headless", action="store_true", help="ブラウザ画面を表示せずにバックグラウンドで実行する")
     args = parser.parse_args()
     
-    # ヘッドレスでない場合は CDP を優先し、ヘッドレスの場合は新規起動（auth.jsonを使用）
-    scraper = MegaScraper(args.year, args.out, args.prog, 
+    scraper = MegaScraper(args.year, 
+                          direction=args.direction,
+                          output_file=args.out,
+                          progress_file=args.prog, 
                           cdp_url=args.cdp_url if not args.headless else None,
                           auth_file=args.auth,
                           headless=args.headless)

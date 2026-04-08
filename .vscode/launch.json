@@ -1,0 +1,74 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "【取得】昇順 (1 →)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/mega_scraper.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--headless",
+                "--year", "${input:academicYear}",
+                "--direction", "up",
+                "--batch", "20000"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "【取得】降順 (99999 →)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/mega_scraper.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--headless",
+                "--year", "${input:academicYear}",
+                "--direction", "down",
+                "--batch", "20000"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "【出力】CSV/JSON 生成",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/jsonl_to_csv.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--input", "syllabus_${input:academicYear}.jsonl",
+                "--output", "syllabus_${input:academicYear}.csv"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "-- 認証管理 --",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/save_auth.py"
+        },
+        {
+            "name": "[1] ブラウザ起動 (Chrome Debug mode)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "./start_chrome_debug.sh",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "[2] 認証情報を保存 (save_auth.py)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/save_auth.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ],
+    "inputs": [
+        {
+            "id": "academicYear",
+            "type": "promptString",
+            "description": "対象の年度を入力してください (例: 2026)",
+            "default": "2026"
+        }
+    ]
+}

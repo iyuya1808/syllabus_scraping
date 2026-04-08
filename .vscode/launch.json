@@ -11,7 +11,8 @@
                 "--headless",
                 "--year", "${input:academicYear}",
                 "--direction", "up",
-                "--batch", "20000"
+                "--batch", "${input:batchAmount}",
+                "--start", "${input:startIdUp}"
             ],
             "justMyCode": true
         },
@@ -25,7 +26,19 @@
                 "--headless",
                 "--year", "${input:academicYear}",
                 "--direction", "down",
-                "--batch", "20000"
+                "--batch", "${input:batchAmount}",
+                "--start", "${input:startIdDown}"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "【統合】昇順・降順データをマージ",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/merge_results.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--year", "${input:academicYear}"
             ],
             "justMyCode": true
         },
@@ -63,6 +76,24 @@
             "type": "promptString",
             "description": "対象の年度を入力してください (例: 2026)",
             "default": "2026"
+        },
+        {
+            "id": "batchAmount",
+            "type": "promptString",
+            "description": "取得する件数を入力してください (例: 1000)",
+            "default": "1000"
+        },
+        {
+            "id": "startIdUp",
+            "type": "promptString",
+            "description": "【昇順】開始ID (空欄なら進捗ファイルから再開)",
+            "default": ""
+        },
+        {
+            "id": "startIdDown",
+            "type": "promptString",
+            "description": "【降順】開始ID (空欄なら進捗ファイルから再開)",
+            "default": ""
         }
     ]
 }

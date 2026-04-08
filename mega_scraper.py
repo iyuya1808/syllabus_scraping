@@ -59,12 +59,12 @@ def parse_detail_content(page):
     return data
 
 class MegaScraper:
-    def __init__(self, year, direction="up", output_file=None, progress_file=None, cdp_url=None, auth_file=None, headless=False):
+    def __init__(self, year, direction="up", start_id=None, output_file=None, progress_file=None, cdp_url=None, auth_file=None, headless=False):
         self.year = year
         self.direction = direction
         
         # デフォルトファイル名の決定
-        out = output_file or f"syllabus_{year}.jsonl"
+        out = output_file or f"syllabus_{year}_{direction}.jsonl"
         prog = progress_file or f"progress_{year}_{direction}.json"
         
         self.output_file = Path(out)
@@ -72,7 +72,11 @@ class MegaScraper:
         self.cdp_url = cdp_url
         self.auth_file = Path(auth_file) if auth_file else None
         self.headless = headless
+        
+        # 進捗の読み込み（start_id が指定されていればそれを優先）
         self.progress = self._load_progress()
+        if start_id is not None:
+            self.progress["next_entno"] = start_id
 
     def _load_progress(self):
         if self.progress_file.exists():
@@ -85,12 +89,14 @@ class MegaScraper:
     def _save_progress(self):
         with open(self.progress_file, "w") as f:
             json.dump(self.progress, f)
+        # print(f"Progress saved: {self.progress['next_entno']}")
 
     def run(self, batch_size=1000):
         start_entno = self.progress["next_entno"]
         print(f"Starting mega scrape (Year: {self.year}, Direction: {self.direction}, StartID: {start_entno}, Headless: {self.headless})")
         
         with sync_playwright() as p:
+            browser = None
             try:
                 if self.cdp_url and not self.headless:
                     print(f"Connecting to existing Chrome via CDP: {self.cdp_url}")
@@ -121,7 +127,7 @@ class MegaScraper:
                         
                         content = _stable_content(page)
                         if "指定した科目のシラバスは存在しません" in content:
-                            pass
+                            print(f"[{ent}] Not found. Skipping...        ", end="\r")
                         elif len(content) < 1000:
                             print(f"\n[{ent}] Warning: Content too short.")
                         else:
@@ -138,6 +144,8 @@ class MegaScraper:
                             else:
                                 print(f"\n[{ent}] Warning: Title not found.")
 
+                    except KeyboardInterrupt:
+                        raise
                     except Exception as e:
                         print(f"\n[{ent}] Error: {e}")
                     finally:
@@ -157,17 +165,22 @@ class MegaScraper:
                         
                     time.sleep(0.5)
                 
-                self._save_progress()
                 print(f"\nBatch completed. Next starting ID will be: {current_entno}")
-                browser.close()
                 
+            except KeyboardInterrupt:
+                print("\nInterrupted by user. Exiting gracefully...")
             except Exception as e:
                 print(f"\nExecution error: {e}")
+            finally:
+                self._save_progress()
+                if browser:
+                    browser.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch", type=int, default=1000, help="1回の実行で取得する件数")
     parser.add_argument("--year", type=int, default=2026, help="シラバスの年度")
+    parser.add_argument("--start", type=str, default=None, help="開始する登録番号 (entno)")
     parser.add_argument("--direction", choices=["up", "down"], default="up", help="取得の方向 (昇順: up, 降順: down)")
     parser.add_argument("--out", default=None, help="出力JSONLファイル名 (未指定なら年度から自動生成)")
     parser.add_argument("--prog", default=None, help="進捗JSONファイル名 (未指定なら年度と方向から自動生成)")
@@ -176,8 +189,17 @@ if __name__ == "__main__":
     parser.add_argument("--headless", action="store_true", help="ブラウザ画面を表示せずにバックグラウンドで実行する")
     args = parser.parse_args()
     
+    # start_id が空文字の場合は None として扱う
+    start_id = None
+    if args.start and args.start.strip():
+        try:
+            start_id = int(args.start)
+        except ValueError:
+            print(f"Warning: Invalid start ID '{args.start}', using default.")
+
     scraper = MegaScraper(args.year, 
                           direction=args.direction,
+                          start_id=start_id,
                           output_file=args.out,
                           progress_file=args.prog, 
                           cdp_url=args.cdp_url if not args.headless else None,
